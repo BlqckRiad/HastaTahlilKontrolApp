@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert,
 } from "react-native";
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +16,8 @@ import { Dimensions } from "react-native";
 import { Formik } from "formik";
 import * as Yup from "yup";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
+import firebase from "../firebase/firebase.js"; // Firebase import
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Ekran genişliğini almak
 const WIDTH = Dimensions.get("window").width;
@@ -23,13 +26,46 @@ const WIDTH = Dimensions.get("window").width;
 const validationSchema = Yup.object().shape({
   tcNo: Yup.string()
     .required("TC Kimlik numarası boş olamaz")
-    .length(11, "TC Kimlik numarası 11 haneli olmalıdır"),
+    .length(6, "TC Kimlik numarası 6 haneli olmalıdır"),
   firstName: Yup.string().required("İsim boş olamaz"),
   lastName: Yup.string().required("Soyisim boş olamaz"),
   password: Yup.string().required("Şifre boş olamaz"),
 });
 
-const RegisterScreen = () => {
+const RegisterScreen = ({ navigation }) => {
+  // Kullanıcıyı Firebase'e ekleyen fonksiyon
+  const addUserToDatabase = async (userData) => {
+    try {
+      const userRef = firebase.database().ref("Users");
+
+      // Kullanıcıları al
+      const snapshot = await userRef.once("value");
+      const users = snapshot.val();
+
+      // Mevcut kullanıcı ID'leri arasında en yüksek olanı bul
+      const userIds = users ? Object.keys(users) : [];
+      const maxUserId =
+        userIds.length > 0 ? Math.max(...userIds.map((id) => parseInt(id))) : 0;
+
+      // Yeni kullanıcı için artan ID
+      const newUserId = maxUserId + 1;
+
+      // Yeni kullanıcıyı veritabanına ekle
+      await userRef.child(newUserId.toString()).set({
+        ...userData,
+        Rol: "User", // Role olarak "User" ekliyoruz
+        TelNo: 0,
+        DogumTarihi: "",
+        Cinsiyet: "",
+      });
+
+      navigation.navigate("Login"); // Kayıt sonrası login ekranına yönlendir
+    } catch (error) {
+      console.error("Kullanıcı eklerken hata oluştu: ", error);
+      Alert.alert("Hata", "Kullanıcı eklenirken bir hata oluştu.");
+    }
+  };
+
   return (
     <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
       <SafeAreaView
@@ -68,14 +104,20 @@ const RegisterScreen = () => {
         {/* Formik Form */}
         <Formik
           initialValues={{
-            tcNo: "",
-            firstName: "",
-            lastName: "",
-            password: "",
+            TcNo: "",
+            Ad: "",
+            Soyad: "",
+            PassWord: "",
           }}
           validationSchema={validationSchema}
           onSubmit={(values) => {
-            console.log(values);
+            const userData = {
+              TcNo: values.tcNo,
+              Ad: values.firstName,
+              Soyad: values.lastName,
+              PassWord: values.password,
+            };
+            addUserToDatabase(userData); // Firebase'e kullanıcıyı ekle
           }}
         >
           {({
@@ -149,46 +191,45 @@ const RegisterScreen = () => {
                 <Text style={styles.buttonText}>Kayıt Ol</Text>
               </TouchableOpacity>
             </View>
-            
           )}
-
-          
         </Formik>
+
+        {/* Navigate to Login Screen */}
         <View
-                style={{
-                  alignItems: "center",
-                  justifyContent: "center",
-                  width: "100%",
-                  paddingTop: SPACING * 3,
-                }}
-              >
-                <TouchableOpacity
-                  onPress={() => {
-                    console.log("Giriş Sayfasına Git");
-                  }}
-                >
-                  <Text
-                    style={{
-                      color: COLORS.primary,
-                      fontSize: SPACING * 1.5,
-                      fontWeight: "600",
-                    }}
-                  >
-                    Hesabınız Var Mı ?
-                  </Text>
-                  <Text
-                    style={{
-                      left:8,
-                      color: COLORS.primary,
-                      fontSize: SPACING * 1.5,
-                      fontWeight: "600",
-                      top: 5,
-                    }}
-                  >
-                    Haydi Giriş Yap
-                  </Text>
-                </TouchableOpacity>
-              </View>
+          style={{
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            paddingTop: SPACING * 3,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => {
+              navigation.navigate("Login");
+            }}
+          >
+            <Text
+              style={{
+                color: COLORS.primary,
+                fontSize: SPACING * 1.5,
+                fontWeight: "600",
+              }}
+            >
+              Hesabınız Var Mı ?
+            </Text>
+            <Text
+              style={{
+                left: 8,
+                color: COLORS.primary,
+                fontSize: SPACING * 1.5,
+                fontWeight: "600",
+                top: 5,
+              }}
+            >
+              Haydi Giriş Yap
+            </Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     </TouchableWithoutFeedback>
   );
@@ -196,7 +237,7 @@ const RegisterScreen = () => {
 
 const styles = StyleSheet.create({
   input: {
-    width: '100%',
+    width: "100%",
     height: 50,
     borderWidth: 1,
     borderRadius: 25,
