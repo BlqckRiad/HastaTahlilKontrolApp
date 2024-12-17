@@ -1,15 +1,43 @@
 import React, { useState } from "react";
-import { View, TextInput, Button, Text, Alert, StyleSheet , TouchableWithoutFeedback} from "react-native";
+import {
+  View,
+  TextInput,
+  Button,
+  Text,
+  Alert,
+  StyleSheet,
+  TouchableWithoutFeedback,
+} from "react-native";
 import firebase from "../firebase/firebase";
 import "firebase/compat/database";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { Keyboard } from "react-native";
-
+import { useEffect } from "react";
 const LoginScreen = () => {
   const [tcNo, setTcNo] = useState("");
   const [password, setPassword] = useState("");
   const navigation = useNavigation();
+
+  useEffect(() => {
+    // Sayfa açıldığında AsyncStorage'dan verileri alıp useState'lere atama
+    const loadData = async () => {
+      try {
+        // AsyncStorage'dan verileri alıyoruz
+        const storedAd = await AsyncStorage.getItem("Ad");
+
+        // Ad değeri boş değilse Home ekranına yönlendirme
+        if (storedAd !== null && storedAd !== "") {
+          console.log('Home Screen e gidiyoruz');
+          navigation.navigate("Home");
+        }
+      } catch (error) {
+        console.error("AsyncStorage okuma hatası:", error);
+      }
+    };
+
+    loadData();
+  }, [navigation]); // navigation bağımlılığı ekleniyor
 
   const handleLogin = async () => {
     try {
@@ -42,7 +70,10 @@ const LoginScreen = () => {
             await AsyncStorage.setItem("Rol", foundUser.Rol); // Rol'ü kaydediyoruz
             await AsyncStorage.setItem("Cinsiyet", foundUser.Cinsiyet); // Cinsiyet'i kaydediyoruz
             await AsyncStorage.setItem("DogumTarihi", foundUser.DogumTarihi); // DogumTarihi'ni kaydediyoruz
-            await AsyncStorage.setItem("PassWord", foundUser.PassWord.toString()); // PassWord'ü kaydediyoruz
+            await AsyncStorage.setItem(
+              "PassWord",
+              foundUser.PassWord.toString()
+            ); // PassWord'ü kaydediyoruz
 
             navigation.navigate("Home");
           } else {
@@ -85,7 +116,10 @@ const LoginScreen = () => {
 
         <Text style={styles.registerText}>
           Hesabınız yok mu?{" "}
-          <Text style={styles.registerLink} onPress={() => navigation.navigate("Register")}>
+          <Text
+            style={styles.registerLink}
+            onPress={() => navigation.navigate("Register")}
+          >
             Kayıt Olun
           </Text>
         </Text>
