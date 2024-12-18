@@ -9,9 +9,32 @@ import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useFocusEffect } from "@react-navigation/native";
 
-const CustomDrawerContent = ( props) => {
-  const [ad, setAd] = useState(""); 
-  const [soyad, setSoyad] = useState(""); 
+const CustomDrawerContent = (props) => {
+  const [ad, setAd] = useState("");
+  const [soyad, setSoyad] = useState("");
+
+  const [role, setRole] = useState("");
+
+  useEffect(() => {
+    const getRoleFromStorage = async () => {
+      try {
+        // Retrieve 'Rol' value from AsyncStorage
+        const storedRole = await AsyncStorage.getItem("Rol");
+
+        // If the role is found, update state
+        if (storedRole) {
+          setRole(storedRole);
+        } else {
+          console.log("No role found in AsyncStorage");
+        }
+      } catch (error) {
+        console.error("Error fetching role from AsyncStorage:", error);
+      }
+    };
+
+    // Call the function to fetch the role when the component mounts
+    getRoleFromStorage();
+  }, []); // Empty dependency array means it runs once when the component mounts
 
   // State güncelleme fonksiyonu
   const updateUserInfo = async () => {
@@ -31,13 +54,12 @@ const CustomDrawerContent = ( props) => {
 
   updateUserInfo();
   return (
-    
     <ScrollView style={styles.drawerContainer}>
       {/* Avatar Resmi */}
       <Image source={require("../image/avatar.png")} style={styles.avatar} />
 
       {/* İsim Soyisim */}
-    
+
       <Text style={styles.name}>
         {ad} {soyad}
       </Text>
@@ -56,33 +78,49 @@ const CustomDrawerContent = ( props) => {
           <Text style={styles.menuText}>Home</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => props.navigation.navigate("Settings")}
-        >
-          <Entypo name="cog" size={24} color="black" />
-          <Text style={styles.menuText}>Settings</Text>
-        </TouchableOpacity>
+        <>
+          {role === "Admin" ? (
+            <>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => props.navigation.navigate("Users")}
+            >
+              <Entypo name="users" size={24} color="black" />
+              <Text style={styles.menuText}>Kullanıcılar</Text>
+            </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => props.navigation.navigate("Settings")}
+              >
+                <Entypo name="cog" size={24} color="black" />
+                <Text style={styles.menuText}>Settings</Text>
+              </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => props.navigation.navigate("S3")}
-        >
-          <AntDesign name="question" size={24} color="black" />
-          <Text style={styles.menuText}>Sık Sorulan Sorular</Text>
-        </TouchableOpacity>
+              {/* Sık Sorulan Sorular Butonu */}
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => props.navigation.navigate("S3")}
+              >
+                <AntDesign name="question" size={24} color="black" />
+                <Text style={styles.menuText}>Sık Sorulan Sorular</Text>
+              </TouchableOpacity>
+            </>
+          )}
 
-        <TouchableOpacity
-          style={styles.menuItem}
-          onPress={() => {
-            AsyncStorage.clear();
-           
-            props.navigation.navigate("Login");
-          }}
-        >
-          <MaterialIcons name="logout" size={24} color="black" />
-          <Text style={styles.menuText}>Çıkış Yap</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              AsyncStorage.clear(); // Clear all AsyncStorage
+              props.navigation.navigate("Login"); // Navigate to login
+            }}
+          >
+            <MaterialIcons name="logout" size={24} color="black" />
+            <Text style={styles.menuText}>Çıkış Yap</Text>
+          </TouchableOpacity>
+        </>
 
         <View style={styles.separator} />
         <View style={styles.avatar}>

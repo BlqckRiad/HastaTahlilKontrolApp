@@ -51,19 +51,58 @@ const SettingScreen = ({ navigation }) => {
 
   const updateUser = async () => {
     try {
-      // Get User_ID to identify the user (optional, depends on your use case)
+      // 1. Get User_ID to identify the user
       const User_ID = await AsyncStorage.getItem("User_ID");
-      console.log(User_ID);
-
+      console.log("User_ID:", User_ID);
+  
+      if (!User_ID) {
+        console.error("User ID not found.");
+        return;
+      }
+  
+      // 2. Fetch all users from the database
       const snapshot = await firebase.database().ref("Users").once("value");
       const users = snapshot.val();
-      console.log(users);
-
-      console.log("Veriler başarıyla kaydedildi.");
+  
+      // 3. Find the user with the matching User_ID
+      const selectedUser = Object.keys(users).find((key) => key === User_ID);
+      
+      if (!selectedUser) {
+        console.error("User not found in the database.");
+        return;
+      }
+  
+      // 4. Prepare updated user data
+      const updatedUserData = {
+        Ad : ad,
+        Soyad : soyad,
+        TcNo : tcNo,
+        TelNo : telNo,
+        Cinsiyet : sex,
+        DogumTarihi : date,
+      };
+  
+      // 5. Update the user data in Firebase
+      await firebase.database().ref(`Users/${User_ID}`).update(updatedUserData);
+  
+      console.log("User data updated successfully!");
+  
+      // Optionally, you can update AsyncStorage as well
+      await AsyncStorage.setItem("Ad", ad);
+      await AsyncStorage.setItem("Soyad", soyad);
+      await AsyncStorage.setItem("TcNo", tcNo);
+      await AsyncStorage.setItem("TelNo", telNo);
+      await AsyncStorage.setItem("Cinsiyet", sex);
+      await AsyncStorage.setItem("DogumTarihi", date);
+  
+      // Provide feedback to the user
+      alert("Profil Başarıyla Güncellendi!");
     } catch (error) {
-      console.error("AsyncStorage kaydetme hatası:", error);
+      console.error("Error updating user data:", error);
+      alert("An error occurred while updating your profile.");
     }
   };
+  
 
   return (
     <SafeAreaView style={{ flex: 1, paddingTop: SPACING * 7 }}>
@@ -101,7 +140,7 @@ const SettingScreen = ({ navigation }) => {
                 fontWeight: "700",
               }}
             >
-              Merhaba, Enes Özbuğanlı
+              Merhaba, {ad} {soyad}
             </Text>
           </View>
         </View>
@@ -183,7 +222,7 @@ const SettingScreen = ({ navigation }) => {
                   fontWeight: "bold",
                 }}
                 value={soyad}
-                onChangeText={(item) => setsoyad(item)}
+                onChangeText={(item) => setSoyad(item)}
               />
             </View>
           </View>

@@ -15,7 +15,7 @@ import CustomDrawerContent from "./assets/DrawerContent/CustomDrawerContent ";
 import ChangePassword from "./assets/screens/ChangePassword";
 import SThreeScreen from "./assets/screens/SThreeScreen";
 import AntDesign from "@expo/vector-icons/AntDesign";
-
+import UsersScreen from "./assets/screens/ScreensForAdmin/UsersScreen";
 
 
 
@@ -72,6 +72,14 @@ const App = () => {
         <Drawer.Screen
           name="Register"
           component={RegisterScreen}
+          options={{
+            drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
+          }}
+        />
+        {/* ADMİN SCREENS*/}
+        <Drawer.Screen
+          name="Users"
+          component={UsersScreen}
           options={{
             drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
           }}
