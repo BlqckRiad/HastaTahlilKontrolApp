@@ -16,6 +16,10 @@ import ChangePassword from "./assets/screens/ChangePassword";
 import SThreeScreen from "./assets/screens/SThreeScreen";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import UsersScreen from "./assets/screens/ScreensForAdmin/UsersScreen";
+import TahlilAddScreen from "./assets/screens/ScreensForAdmin/TahlilAddScreen";
+import TahlilScreen from "./assets/screens/ScreensForAdmin/TahlilScreen";
+import TahlilDetailScreen from "./assets/screens/ScreensForAdmin/TahlilDetailScreen";
+import TahlilDetailTwoScreen from "./assets/screens/ScreensForAdmin/TahlilDetailTwoScreen";
 
 
 
@@ -80,6 +84,34 @@ const App = () => {
         <Drawer.Screen
           name="Users"
           component={UsersScreen}
+          options={{
+            drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
+          }}
+        />
+         <Drawer.Screen
+          name="TahlilAdd"
+          component={TahlilAddScreen}
+          options={{
+            drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
+          }}
+        />
+        <Drawer.Screen
+          name="Tahlil"
+          component={TahlilScreen}
+          options={{
+            drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
+          }}
+        />
+          <Drawer.Screen
+          name="TahlilDetail"
+          component={TahlilDetailScreen}
+          options={{
+            drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
+          }}
+        />
+          <Drawer.Screen
+          name="TahlilDetailTwo"
+          component={TahlilDetailTwoScreen}
           options={{
             drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
           }}

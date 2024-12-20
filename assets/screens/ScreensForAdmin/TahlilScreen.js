@@ -34,7 +34,7 @@ const TahlilScreen = ({ navigation }) => {
         const tahlils = snapshot.val();
         const tahlilArray = tahlils ? Object.values(tahlils) : []; // Objeyi diziye dönüştür
         setData(tahlilArray);
-        console.log(tahlilArray);
+        
       } catch (error) {
         console.error("Tahlil Sonuçları Gelmiyor:", error);
       }
