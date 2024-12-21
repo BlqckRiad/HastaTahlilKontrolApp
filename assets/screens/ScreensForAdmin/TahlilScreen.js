@@ -22,7 +22,7 @@ import Feather from "@expo/vector-icons/Feather";
 
 const TahlilScreen = ({ navigation }) => {
   const [data, setData] = useState([]);
-
+  
   useEffect(() => {
     // Firebase'den verileri çekme
     const loadData = async () => {
@@ -39,11 +39,12 @@ const TahlilScreen = ({ navigation }) => {
         console.error("Tahlil Sonuçları Gelmiyor:", error);
       }
     };
-
+    
     loadData();
-  }, [navigation]); // navigation bağımlılığı ekleniyor
+  }, [data]); // navigation bağımlılığı ekleniyor
 
   const renderItem = ({ item }) => (
+    
     <View
       style={{
         flexDirection: "row",

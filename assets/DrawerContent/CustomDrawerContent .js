@@ -8,7 +8,6 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
 const CustomDrawerContent = (props) => {
   const [ad, setAd] = useState("");
   const [soyad, setSoyad] = useState("");
@@ -81,30 +80,36 @@ const CustomDrawerContent = (props) => {
         <>
           {role === "Admin" ? (
             <>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => props.navigation.navigate("Users")}
-            >
-              <Entypo name="users" size={24} color="black" />
-              <Text style={styles.menuText}>Kullanıcılar</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => props.navigation.navigate("Users")}
+              >
+                <Entypo name="users" size={24} color="black" />
+                <Text style={styles.menuText}>Kullanıcılar</Text>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => props.navigation.navigate("TahlilAdd")}
-            >
-              <MaterialIcons name="health-and-safety" size={24} color="black" />
-              <Text style={styles.menuText}>Tahlil Ekle</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => props.navigation.navigate("Tahlil")}
-            >
-              <MaterialIcons name="health-and-safety" size={24} color="black" />
-              <Text style={styles.menuText}>Tahliller</Text>
-            </TouchableOpacity>
-
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => props.navigation.navigate("Tahlil")}
+              >
+                <MaterialIcons
+                  name="health-and-safety"
+                  size={24}
+                  color="black"
+                />
+                <Text style={styles.menuText}>Tahliller</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => props.navigation.navigate("TahlilAdd")}
+              >
+                <MaterialIcons
+                  name="health-and-safety"
+                  size={24}
+                  color="black"
+                />
+                <Text style={styles.menuText}>Tahlil Ekle</Text>
+              </TouchableOpacity>
             </>
           ) : (
             <>

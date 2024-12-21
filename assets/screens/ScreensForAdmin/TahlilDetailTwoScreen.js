@@ -1,4 +1,11 @@
-import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from "react-native";
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  ActivityIndicator,
+  FlatList,
+} from "react-native";
 import React, { useEffect, useState } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import COLORS from "../../config/COLORS";
@@ -14,6 +21,7 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
   const [maxay, setmaxay] = useState(0);
   const [igdata, setigdata] = useState("");
   const [loading, setLoading] = useState(false); // Yükleme durumu için state
+  const [logDataArray, setLogDataArray] = useState([]);
 
   // Yaş ve aylık hesaplama fonksiyonu
   const calculateAgeAndMonths = (dogumTarihi) => {
@@ -42,6 +50,7 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     const tarih = data.DogumTarihi;
+    
     const { age, remainingMonths, ageInMonths } = calculateAgeAndMonths(tarih);
     setigdata(key);
     setAy(ageInMonths); // Ay olarak yaşı setliyoruz
@@ -55,11 +64,11 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
           .once("value");
 
         const klavuzlar = snapshot.val();
+        let newLogDataArray = []; // Yeni log verilerini bu dizide toplayacağız
 
         for (let key in klavuzlar) {
           const klavuz = klavuzlar[key];
 
-          // AylıkMi 0 ise, MinYas ve MaxYas'ı ay cinsinden hesaplayacağız
           let calculatedMinay = klavuz.MinYas;
           let calculatedMaxay = klavuz.MaxYas;
 
@@ -68,26 +77,43 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
             calculatedMaxay *= 12; // Yıl -> Ay
           }
 
-          // Set ediyorum min ve max ayları
           setminay(calculatedMinay);
           setmaxay(calculatedMaxay);
-          
-          // Kişinin yaşı (ay olarak) ile karşılaştırma yapıyoruz
-          if (ay >= calculatedMinay && ay <= calculatedMaxay) {
 
-            const datas = {
-                IgA : klavuz.IgA,
-                IgA1 : klavuz.IgA1,
-                IgA2 : klavuz.IgA2,
+          if (ay >= calculatedMinay && ay <= calculatedMaxay) {
+            var minIg = "Min" + igdata;
+            var maxIg = "Max" + igdata;
+
+            const snapshot2 = await firebase
+              .database()
+              .ref("Klavuzlar")
+              .once("value");
+            const klavuzclass = snapshot2.val();
+
+            const klavuzAd =
+              klavuzclass[klavuz.KlavuzAlinanID]?.Ad || "Bilinmiyor";
+            const logData = {
+              IgTipi: klavuz.IgTipi,
+              MinData: minIg,
+              MinDataVal: klavuz[minIg],
+              MaxData: maxIg,
+              MaxDataVal: klavuz[maxIg],
+              KişiIgVal: data[igdata],
+              DataNow: igdata,
+              KlavuzID: klavuz.KlavuzAlinanID,
+              KlavuzAd: klavuzAd,
+            };
+
+            if (
+              logData.MaxDataVal !== undefined &&
+              logData.MinDataVal !== undefined
+            ) {
+              newLogDataArray.push(logData); // Yeni veriyi diziye ekliyoruz
             }
-            var minIg = 'Min'+igdata;
-            var maxIg = 'Max'+igdata;
-            console.log();
-            console.log(`Min ${igdata} : ${klavuz[minIg]}`);
-            console.log(`Max ${igdata} : ${klavuz[maxIg]}`);
-            
           }
         }
+
+        setLogDataArray(newLogDataArray); // State'i güncelliyoruz
       } catch (error) {
         console.error("Tahlil Sonuçları Gelmiyor:", error);
       } finally {
@@ -96,7 +122,7 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
     };
 
     loadData();
-  }, [ay]); // `ay` değiştiğinde bu `useEffect` çalışacak
+  }, [data , key , item]); // `ay` değiştiğinde bu `useEffect` çalışacak
 
   return (
     <SafeAreaView
@@ -118,7 +144,68 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : (
-        <Text style={styles.contentText}>Veri başarıyla yüklendi.</Text>
+        <FlatList
+          data={logDataArray}
+          keyExtractor={(item, index) => index.toString()}
+          renderItem={({ item }) => (
+            <View style={styles.logDataContainer}>
+              <Text
+                style={{
+                  fontSize: SPACING * 2,
+                  fontWeight: "600",
+                }}
+              >{`${item.KlavuzAd} İsimli Klavuza Göre : `}</Text>
+              <Text style={{ fontSize: SPACING * 1.6, fontWeight: "500" }}>
+                Olması Gereken{" "}
+                <Text style={{ fontSize: SPACING * 2, fontWeight: "700" }}>
+                  {item.DataNow}
+                </Text>{" "}
+                Değeri :
+              </Text>
+
+              <Text
+                style={{
+                  fontSize: SPACING * 1.7,
+                  fontWeight: "600",
+                }}
+              >{`Ig Tipi: ${item.IgTipi}`}</Text>
+              <Text
+                style={{
+                  fontSize: SPACING * 1.7,
+                  fontWeight: "600",
+                }}
+              >{`Min Değer: ${item.MinDataVal}`}</Text>
+              <Text
+                style={{
+                  fontSize: SPACING * 1.7,
+                  fontWeight: "600",
+                }}
+              >{`Max Değer: ${item.MaxDataVal}`}</Text>
+              <Text
+                style={{
+                  fontSize: SPACING * 1.7,
+                  fontWeight: "600",
+                  paddingTop: SPACING / 2,
+                }}
+              >{`Hastanın ${item.DataNow} Değeri: ${item.KişiIgVal}`}</Text>
+              <Text
+                style={{
+                  fontSize: SPACING * 1.7,
+                  fontWeight: "600",
+                  paddingTop: SPACING / 2,
+                }}
+              >
+                Hastanın Tahlile Göre Durum :{" "}
+                {item.KişiIgVal >= item.MinDataVal &&
+                item.KişiIgVal <= item.MaxDataVal ? (
+                  <AntDesign name="caretup" size={24} color="green" />
+                ) : (
+                  <AntDesign name="caretdown" size={24} color="red" />
+                )}
+              </Text>
+            </View>
+          )}
+        />
       )}
     </SafeAreaView>
   );
@@ -131,6 +218,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+  },
+  logDataContainer: {
+    marginBottom: SPACING * 2,
+    padding: SPACING,
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 8,
+  },
+  logDataText: {
+    fontSize: 16,
+    color: COLORS.black,
+    marginBottom: SPACING / 2,
   },
   contentText: {
     fontSize: 16,

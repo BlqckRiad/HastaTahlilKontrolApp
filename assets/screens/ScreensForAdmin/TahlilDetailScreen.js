@@ -11,26 +11,46 @@ import Entypo from "@expo/vector-icons/Entypo";
 const TahlilDetailScreen = ({ route, navigation }) => {
   const { item } = route.params; // Gönderilen veriyi alıyoruz
   const [foundUser, setFoundUser] = useState(null); // Kullanıcıyı durum olarak tutuyoruz
+  const [FilteredTahlils, setFilteredTahlils] = useState(null); // Kullanıcıyı durum olarak tutuyoruz
 
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Firebase'den Users ve TahlilSonuc verilerini çek
         const snapshot = await firebase.database().ref("Users").once("value");
         const users = snapshot.val();
 
+        const snapshot2 = await firebase
+          .database()
+          .ref("TahlilSonuc")
+          .once("value");
+        const hastatahlils = snapshot2.val();
+        console.log(hastatahlils);
         // Kullanıcıları diziye dönüştür ve eşleşen TcNo'yu bul
         const matchedUser = Object.values(users).find(
           (user) => user.TcNo === item.TcNo
         );
 
-        setFoundUser(matchedUser || null); // Eğer eşleşen bulunmazsa null ayarlanır
+        if (matchedUser) {
+          // Tahlilleri matchedUser.TcNo ile filtrele
+          const filteredTahlils = Object.values(hastatahlils).filter(
+            (tahlil) => tahlil.TcNo === matchedUser.TcNo
+          );
+
+          // State'leri güncelle
+          setFoundUser(matchedUser);
+          setFilteredTahlils(filteredTahlils); // Filtrelenen tahlilleri kaydet
+        } else {
+          setFoundUser(null);
+          setFilteredTahlils([]); // Eğer eşleşen yoksa boş bir dizi ayarla
+        }
       } catch (error) {
         console.error("Tahlil Sonuçları Gelmiyor:", error);
       }
     };
 
     loadData();
-  }, [item.TcNo]); // Sadece item.TcNo değişirse yeniden çalışır
+  }, [item]); // Sadece item.TcNo değişirse yeniden çalışır
 
   return (
     <SafeAreaView
@@ -187,15 +207,18 @@ const TahlilDetailScreen = ({ route, navigation }) => {
                     }}
                     onPress={() => {
                       // Buraya tıklama olayını işlemek için bir fonksiyon ekleyin
-                      
+
                       const data = {
                         [key]: item[key], // Dinamik olarak key'in değerini nesne anahtarı olarak kullanıyoruz
                         DogumTarihi: foundUser.DogumTarihi,
                         TcNo: foundUser.TcNo,
                       };
-                      console.log(data);
-                      navigation.navigate("TahlilDetailTwo", { data, item , key })
-                      
+
+                      navigation.navigate("TahlilDetailTwo", {
+                        data,
+                        item,
+                        key,
+                      });
                     }}
                   >
                     <Text
@@ -234,12 +257,62 @@ const TahlilDetailScreen = ({ route, navigation }) => {
         <View>
           <Text
             style={{
-              fontSize: SPACING * 1.8,
-              fontWeight: "600",
+              fontSize: SPACING * 2.2, // Daha büyük yazı boyutu
+              fontWeight: "bold",
             }}
           >
             Hasta İle İlgili Klavuzlar
           </Text>
+          {FilteredTahlils &&
+            FilteredTahlils.length > 0 &&
+            Object.keys(item).map((key) => {
+              if (key.startsWith("Ig")) {
+                const currentValue = parseFloat(item[key]);
+                const averageValue =
+                  FilteredTahlils.reduce(
+                    (sum, tahlil) => sum + parseFloat(tahlil[key] || 0),
+                    0
+                  ) / FilteredTahlils.length;
+                const status =
+                  currentValue > averageValue
+                    ? "Artmış"
+                    : currentValue < averageValue
+                    ? "Azalmış"
+                    : "Normal";
+                const color =
+                  status === "Artmış"
+                    ? "green"
+                    : status === "Azalmış"
+                    ? "red"
+                    : "black";
+                const direction =
+                  status === "Artmış"
+                    ? "\u2191" // Yukarı ok
+                    : status === "Azalmış"
+                    ? "\u2193" // Aşağı ok
+                    : "-";
+
+                return (
+                  <View key={key} style={{ marginVertical: 10 }}>
+                    <Text
+                      style={{ fontSize: SPACING * 1.8, fontWeight: "600" }}
+                    >
+                      {key}: Şuanki Değer: {currentValue}, Ortalama Değer:{" "}
+                      {averageValue.toFixed(2)}, Durum: {status}{" "}
+                      <Text style={{ color }}>{direction}</Text>
+                    </Text>
+                    <View
+                      style={{
+                        height: 2,
+                        backgroundColor: "blue",
+                        marginVertical: 8,
+                      }}
+                    />
+                  </View>
+                );
+              }
+              return null;
+            })}
         </View>
       </ScrollView>
     </SafeAreaView>
