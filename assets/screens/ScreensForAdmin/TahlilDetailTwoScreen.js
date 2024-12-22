@@ -50,7 +50,7 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
 
   useEffect(() => {
     const tarih = data.DogumTarihi;
-    
+
     const { age, remainingMonths, ageInMonths } = calculateAgeAndMonths(tarih);
     setigdata(key);
     setAy(ageInMonths); // Ay olarak yaşı setliyoruz
@@ -83,7 +83,7 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
           if (ay >= calculatedMinay && ay <= calculatedMaxay) {
             var minIg = "Min" + igdata;
             var maxIg = "Max" + igdata;
-
+            var ekveriIg = "EkVeri" + igdata;
             const snapshot2 = await firebase
               .database()
               .ref("Klavuzlar")
@@ -92,6 +92,7 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
 
             const klavuzAd =
               klavuzclass[klavuz.KlavuzAlinanID]?.Ad || "Bilinmiyor";
+
             const logData = {
               IgTipi: klavuz.IgTipi,
               MinData: minIg,
@@ -102,6 +103,7 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
               DataNow: igdata,
               KlavuzID: klavuz.KlavuzAlinanID,
               KlavuzAd: klavuzAd,
+              Ekveri: klavuz[ekveriIg],
             };
 
             if (
@@ -112,17 +114,17 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
             }
           }
         }
-
+        console.log(newLogDataArray);
         setLogDataArray(newLogDataArray); // State'i güncelliyoruz
       } catch (error) {
-        console.error("Tahlil Sonuçları Gelmiyor:", error);
+        console.error("Tahlil Sonuçları Gelmiyror:", error);
       } finally {
         setLoading(false); // İşlem tamamlandığında yükleme göstergesini kapat
       }
     };
 
     loadData();
-  }, [data , key , item]); // `ay` değiştiğinde bu `useEffect` çalışacak
+  }, [data, key, item]); // `ay` değiştiğinde bu `useEffect` çalışacak
 
   return (
     <SafeAreaView
@@ -188,6 +190,13 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
                   paddingTop: SPACING / 2,
                 }}
               >{`Hastanın ${item.DataNow} Değeri: ${item.KişiIgVal}`}</Text>
+              <Text
+                style={{
+                  fontSize: SPACING * 1.7,
+                  fontWeight: "600",
+                  paddingTop: SPACING / 2,
+                }}
+              > {`Ek Veri : ${item.Ekveri}`} </Text>
               <Text
                 style={{
                   fontSize: SPACING * 1.7,

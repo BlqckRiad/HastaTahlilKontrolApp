@@ -22,27 +22,23 @@ const TahlilUserScreen = ({ navigation }) => {
   const [selectedTahlil, setSelectedTahlil] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const snapshot = await firebase.database().ref('TahlilSonuc').once('value');
-        const tahlils = snapshot.val();
-        const storedTcNo = await AsyncStorage.getItem('TcNo');
-        setTcNo(storedTcNo);
+  const loadData = async () => {
+    try {
+      const snapshot = await firebase.database().ref('TahlilSonuc').once('value');
+      const tahlils = snapshot.val();
+      const storedTcNo = await AsyncStorage.getItem('TcNo');
+      setTcNo(storedTcNo);
 
-        const filtered = Object.values(tahlils || {}).filter(
-          (item) => item.TcNo === storedTcNo
-        );
-        setFilteredTahlils(filtered);
-        setTahlilData(filtered);
-      } catch (error) {
-        console.error('Tahlil Sonuçları Gelmiyor:', error);
-      }
-    };
-
-    loadData();
-  }, []);
-
+      const filtered = Object.values(tahlils || {}).filter(
+        (item) => item.TcNo === storedTcNo
+      );
+      setFilteredTahlils(filtered);
+      setTahlilData(filtered);
+    } catch (error) {
+      console.error('Tahlil Sonuçları Gelmiyor:', error);
+    }
+  };
+  
   const renderTahlilItem = ({ item }) => (
     <View style={styles.tahlilItem}>
       <TouchableOpacity
@@ -71,7 +67,7 @@ const TahlilUserScreen = ({ navigation }) => {
       )}
     </View>
   );
-
+  loadData();
   return (
     <SafeAreaView
       style={{
