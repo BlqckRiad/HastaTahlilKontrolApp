@@ -14,37 +14,22 @@ const CustomDrawerContent = (props) => {
 
   const [role, setRole] = useState("");
 
-  useEffect(() => {
-    const getRoleFromStorage = async () => {
-      try {
-        // Retrieve 'Rol' value from AsyncStorage
-        const storedRole = await AsyncStorage.getItem("Rol");
-
-        // If the role is found, update state
-        if (storedRole) {
-          setRole(storedRole);
-        } else {
-          console.log("No role found in AsyncStorage");
-        }
-      } catch (error) {
-        console.error("Error fetching role from AsyncStorage:", error);
-      }
-    };
-
-    // Call the function to fetch the role when the component mounts
-    getRoleFromStorage();
-  }, []); // Empty dependency array means it runs once when the component mounts
+  
 
   // State güncelleme fonksiyonu
   const updateUserInfo = async () => {
     try {
       const storedAd = await AsyncStorage.getItem("Ad");
       const storedSoyad = await AsyncStorage.getItem("Soyad");
+      const storedRolee = await AsyncStorage.getItem("Rol");
       if (storedAd !== null) {
         setAd(storedAd); // State'i güncelle
       }
       if (storedSoyad !== null) {
         setSoyad(storedSoyad); // State'i güncelle
+      }
+      if (storedRolee !== null) {
+        setRole(storedRolee); // State'i güncelle
       }
     } catch (error) {
       console.error("Error fetching Ad from AsyncStorage", error);
@@ -60,7 +45,7 @@ const CustomDrawerContent = (props) => {
       {/* İsim Soyisim */}
 
       <Text style={styles.name}>
-        {ad} {soyad}
+        {ad} {soyad} 
       </Text>
 
       {/* Altındaki Çizgi */}
@@ -76,7 +61,7 @@ const CustomDrawerContent = (props) => {
           <Entypo name="home" size={24} color="black" />
           <Text style={styles.menuText}>Home</Text>
         </TouchableOpacity>
-
+        
         <>
           {role === "Admin" ? (
             <>
@@ -110,9 +95,22 @@ const CustomDrawerContent = (props) => {
                 />
                 <Text style={styles.menuText}>Tahlil Ekle</Text>
               </TouchableOpacity>
+             
             </>
           ) : (
             <>
+             <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => props.navigation.navigate("TahlilUser")}
+              >
+                <MaterialIcons
+                  name="health-and-safety"
+                  size={24}
+                  color="black"
+                />
+                <Text style={styles.menuText}>Tahlil Sonuçlarını Görüntüle</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.menuItem}
                 onPress={() => props.navigation.navigate("Settings")}

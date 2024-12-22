@@ -20,6 +20,7 @@ import TahlilAddScreen from "./assets/screens/ScreensForAdmin/TahlilAddScreen";
 import TahlilScreen from "./assets/screens/ScreensForAdmin/TahlilScreen";
 import TahlilDetailScreen from "./assets/screens/ScreensForAdmin/TahlilDetailScreen";
 import TahlilDetailTwoScreen from "./assets/screens/ScreensForAdmin/TahlilDetailTwoScreen";
+import TahlilUserScreen from "./assets/screens/ScreensForUser/TahlilUserScreen";
 
 
 
@@ -112,6 +113,13 @@ const App = () => {
           <Drawer.Screen
           name="TahlilDetailTwo"
           component={TahlilDetailTwoScreen}
+          options={{
+            drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
+          }}
+        />
+           <Drawer.Screen
+          name="TahlilUser"
+          component={TahlilUserScreen}
           options={{
             drawerIcon: () => <Entypo name="cog" size={24} color="black" />,
           }}

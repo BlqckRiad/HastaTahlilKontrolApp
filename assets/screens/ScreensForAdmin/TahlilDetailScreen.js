@@ -25,7 +25,7 @@ const TahlilDetailScreen = ({ route, navigation }) => {
           .ref("TahlilSonuc")
           .once("value");
         const hastatahlils = snapshot2.val();
-        console.log(hastatahlils);
+        
         // Kullanıcıları diziye dönüştür ve eşleşen TcNo'yu bul
         const matchedUser = Object.values(users).find(
           (user) => user.TcNo === item.TcNo
