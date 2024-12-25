@@ -20,13 +20,13 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
   const [minay, setminay] = useState(0);
   const [maxay, setmaxay] = useState(0);
   const [igdata, setigdata] = useState("");
-  const [loading, setLoading] = useState(false); // Yükleme durumu için state
+  const [loading, setLoading] = useState(true); // Başlangıçta loading true olarak ayarlanıyor
   const [logDataArray, setLogDataArray] = useState([]);
 
   // Yaş ve aylık hesaplama fonksiyonu
   const calculateAgeAndMonths = (dogumTarihi) => {
     const today = new Date();
-    const dogumTarihiParts = dogumTarihi.split("."); // 18.11.2003 formatını ayırıyoruz
+    const dogumTarihiParts = dogumTarihi.split(".");
     const birthDate = new Date(
       dogumTarihiParts[2],
       dogumTarihiParts[1] - 1,
@@ -42,89 +42,97 @@ const TahlilDetailTwoScreen = ({ route, navigation }) => {
       ageInMonths -= 1;
     }
 
-    const age = years;
-    const remainingMonths = months < 0 ? 12 + months : months;
-
-    return { age, remainingMonths, ageInMonths };
+    return ageInMonths;
   };
 
   useEffect(() => {
-    const tarih = data.DogumTarihi;
-
-    const { age, remainingMonths, ageInMonths } = calculateAgeAndMonths(tarih);
-    setigdata(key);
-    setAy(ageInMonths); // Ay olarak yaşı setliyoruz
+    let isMounted = true; // Component mount durumunu kontrol etmek için
 
     const loadData = async () => {
-      setLoading(true); // Yükleme göstergesini aç
+      if (!isMounted) return; // Component unmount olduysa işlemi durdur
+      
+      setLoading(true);
       try {
+        const tarih = data.DogumTarihi;
+        const ageInMonths = calculateAgeAndMonths(tarih);
+        
+        if (isMounted) {
+          setigdata(key);
+          setAy(ageInMonths);
+        }
+
         const snapshot = await firebase
           .database()
           .ref("KlavuzVeri")
           .once("value");
 
         const klavuzlar = snapshot.val();
-        let newLogDataArray = []; // Yeni log verilerini bu dizide toplayacağız
+        let newLogDataArray = [];
 
-        for (let key in klavuzlar) {
-          const klavuz = klavuzlar[key];
-
+        for (let klavuzKey in klavuzlar) {
+          const klavuz = klavuzlar[klavuzKey];
           let calculatedMinay = klavuz.MinYas;
           let calculatedMaxay = klavuz.MaxYas;
 
           if (klavuz.AylikMi === 0) {
-            calculatedMinay *= 12; // Yıl -> Ay
-            calculatedMaxay *= 12; // Yıl -> Ay
+            calculatedMinay *= 12;
+            calculatedMaxay *= 12;
           }
 
-          setminay(calculatedMinay);
-          setmaxay(calculatedMaxay);
+          if (isMounted) {
+            setminay(calculatedMinay);
+            setmaxay(calculatedMaxay);
+          }
 
-          if (ay >= calculatedMinay && ay <= calculatedMaxay) {
-            var minIg = "Min" + igdata;
-            var maxIg = "Max" + igdata;
-            var ekveriIg = "EkVeri" + igdata;
+          if (ageInMonths >= calculatedMinay && ageInMonths <= calculatedMaxay) {
+            const minIg = "Min" + key;
+            const maxIg = "Max" + key;
+            const ekveriIg = "EkVeri" + key;
+
             const snapshot2 = await firebase
               .database()
               .ref("Klavuzlar")
               .once("value");
             const klavuzclass = snapshot2.val();
+            
+            const klavuzAd = klavuzclass[klavuz.KlavuzAlinanID]?.Ad || "Bilinmiyor";
 
-            const klavuzAd =
-              klavuzclass[klavuz.KlavuzAlinanID]?.Ad || "Bilinmiyor";
-
-            const logData = {
-              IgTipi: klavuz.IgTipi,
-              MinData: minIg,
-              MinDataVal: klavuz[minIg],
-              MaxData: maxIg,
-              MaxDataVal: klavuz[maxIg],
-              KişiIgVal: data[igdata],
-              DataNow: igdata,
-              KlavuzID: klavuz.KlavuzAlinanID,
-              KlavuzAd: klavuzAd,
-              Ekveri: klavuz[ekveriIg],
-            };
-
-            if (
-              logData.MaxDataVal !== undefined &&
-              logData.MinDataVal !== undefined
-            ) {
-              newLogDataArray.push(logData); // Yeni veriyi diziye ekliyoruz
+            if (klavuz[minIg] !== undefined && klavuz[maxIg] !== undefined) {
+              newLogDataArray.push({
+                IgTipi: klavuz.IgTipi,
+                MinData: minIg,
+                MinDataVal: klavuz[minIg],
+                MaxData: maxIg,
+                MaxDataVal: klavuz[maxIg],
+                KişiIgVal: data[key],
+                DataNow: key,
+                KlavuzID: klavuz.KlavuzAlinanID,
+                KlavuzAd: klavuzAd,
+                Ekveri: klavuz[ekveriIg] || "",
+              });
             }
           }
         }
-        console.log(newLogDataArray);
-        setLogDataArray(newLogDataArray); // State'i güncelliyoruz
+
+        if (isMounted) {
+          setLogDataArray(newLogDataArray);
+          setLoading(false);
+        }
       } catch (error) {
-        console.error("Tahlil Sonuçları Gelmiyror:", error);
-      } finally {
-        setLoading(false); // İşlem tamamlandığında yükleme göstergesini kapat
+        console.error("Tahlil Sonuçları Gelmiyor:", error);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     loadData();
-  }, [data, key, item]); // `ay` değiştiğinde bu `useEffect` çalışacak
+
+    // Cleanup function
+    return () => {
+      isMounted = false;
+    };
+  }, [data, key]); // item dependency'sini kaldırdık
 
   return (
     <SafeAreaView

@@ -7,260 +7,320 @@ import {
   TouchableWithoutFeedback,
   Keyboard,
   Alert,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import React from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
 import SPACING from "../config/SPACING";
 import COLORS from "../config/COLORS";
-import { Dimensions } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
 import { Formik } from "formik";
 import * as Yup from "yup";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
-import firebase from "../firebase/firebase.js"; // Firebase import
+import { FontAwesome5 } from "@expo/vector-icons";
+import firebase from "../firebase/firebase.js";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Ekran genişliğini almak
-const WIDTH = Dimensions.get("window").width;
+const { width, height } = Dimensions.get("window");
 
 // Validation Schema
 const validationSchema = Yup.object().shape({
   tcNo: Yup.string()
     .required("TC Kimlik numarası boş olamaz")
-    .length(6, "TC Kimlik numarası 6 haneli olmalıdır"),
-  firstName: Yup.string().required("İsim boş olamaz"),
-  lastName: Yup.string().required("Soyisim boş olamaz"),
-  password: Yup.string().required("Şifre boş olamaz"),
+    .length(11, "TC Kimlik numarası 11 haneli olmalıdır"),
+  firstName: Yup.string()
+    .required("İsim boş olamaz")
+    .min(2, "İsim en az 2 karakter olmalıdır"),
+  lastName: Yup.string()
+    .required("Soyisim boş olamaz")
+    .min(2, "Soyisim en az 2 karakter olmalıdır"),
+  password: Yup.string()
+    .required("Şifre boş olamaz")
+    .min(6, "Şifre en az 6 karakter olmalıdır"),
 });
 
 const RegisterScreen = ({ navigation }) => {
-  // Kullanıcıyı Firebase'e ekleyen fonksiyon
   const addUserToDatabase = async (userData) => {
     try {
-      const userRef = firebase.database().ref("Users");
-
-      // Kullanıcıları al
-      const snapshot = await userRef.once("value");
+      // TC No kontrolü
+      const snapshot = await firebase.database().ref("Users").once("value");
       const users = snapshot.val();
+      
+      if (users) {
+        const userExists = Object.values(users).some(
+          (user) => user.TcNo.toString() === userData.TcNo.toString()
+        );
+        
+        if (userExists) {
+          Alert.alert("Hata", "Bu TC Kimlik numarası ile kayıtlı bir kullanıcı zaten var!");
+          return;
+        }
+      }
 
-      // Mevcut kullanıcı ID'leri arasında en yüksek olanı bul
-      const userIds = users ? Object.keys(users) : [];
-      const maxUserId =
-        userIds.length > 0 ? Math.max(...userIds.map((id) => parseInt(id))) : 0;
-
-      // Yeni kullanıcı için artan ID
-      const newUserId = maxUserId + 1;
-
-      // Yeni kullanıcıyı veritabanına ekle
-      await userRef.child(newUserId.toString()).set({
-        ...userData,
-        Rol: "User", // Role olarak "User" ekliyoruz
-        TelNo: 0,
-        DogumTarihi: "",
-        Cinsiyet: "",
+      // Yeni kullanıcı oluştur
+      const newUserRef = firebase.database().ref("Users").push();
+      await newUserRef.set({
+        TcNo: userData.TcNo,
+        Ad: userData.firstName,
+        Soyad: userData.lastName,
+        PassWord: userData.password,
+        Rol: "User",
       });
 
-      navigation.navigate("Login"); // Kayıt sonrası login ekranına yönlendir
+      Alert.alert(
+        "Başarılı",
+        "Kayıt işlemi başarıyla tamamlandı!",
+        [
+          {
+            text: "Tamam",
+            onPress: () => navigation.navigate("Login"),
+          },
+        ]
+      );
     } catch (error) {
-      console.error("Kullanıcı eklerken hata oluştu: ", error);
-      Alert.alert("Hata", "Kullanıcı eklenirken bir hata oluştu.");
+      console.error("Kayıt hatası:", error);
+      Alert.alert("Hata", "Kayıt işlemi sırasında bir hata oluştu!");
     }
   };
 
   return (
-    <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
-      <SafeAreaView
-        style={{
-          marginHorizontal: SPACING * 2,
-          marginTop: SPACING * 5,
-          alignItems: "center",
-          justifyContent: "center",
-          flex: 1,
-        }}
-      >
-        <View
-          style={{
-            justifyContent: "center",
-            alignItems: "center",
-            width: "100%",
-          }}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#487DD2', '#2196F3', '#64B5F6']}
+          style={styles.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
         >
-          <FontAwesome5
-            name="hand-holding-medical"
-            size={44}
-            color={COLORS.dark}
-          />
-          <Text
-            style={{
-              color: COLORS.dark,
-              fontSize: SPACING * 2,
-              fontWeight: "600",
-              top: SPACING,
-            }}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.formContainer}
           >
-            KAYIT OL
-          </Text>
-        </View>
+            <View style={styles.iconContainer}>
+              <FontAwesome5 name="user-plus" size={40} color={COLORS.primary} />
+            </View>
 
-        {/* Formik Form */}
-        <Formik
-          initialValues={{
-            TcNo: "",
-            Ad: "",
-            Soyad: "",
-            PassWord: "",
-          }}
-          validationSchema={validationSchema}
-          onSubmit={(values) => {
-            const userData = {
-              TcNo: values.tcNo,
-              Ad: values.firstName,
-              Soyad: values.lastName,
-              PassWord: values.password,
-            };
-            addUserToDatabase(userData); // Firebase'e kullanıcıyı ekle
-          }}
-        >
-          {({
-            handleChange,
-            handleBlur,
-            handleSubmit,
-            values,
-            errors,
-            touched,
-          }) => (
-            <View
-              style={{
-                width: WIDTH - SPACING * 8,
-                top: SPACING * 2,
-                justifyContent: "center",
-                alignItems: "center",
+            <Text style={styles.title}>Kayıt Ol</Text>
+            <Text style={styles.subtitle}>Yeni bir hesap oluşturun</Text>
+
+            <Formik
+              initialValues={{
+                tcNo: "",
+                firstName: "",
+                lastName: "",
+                password: "",
               }}
+              validationSchema={validationSchema}
+              onSubmit={addUserToDatabase}
             >
-              {/* TC No Input */}
-              <TextInput
-                style={styles.input}
-                placeholder="TC NO GİRİNİZ"
-                value={values.tcNo}
-                onChangeText={handleChange("tcNo")}
-                onBlur={handleBlur("tcNo")}
-                keyboardType="numeric"
-              />
-              {touched.tcNo && errors.tcNo && (
-                <Text style={styles.errorText}>{errors.tcNo}</Text>
-              )}
+              {({
+                handleChange,
+                handleBlur,
+                handleSubmit,
+                values,
+                errors,
+                touched,
+              }) => (
+                <View style={styles.form}>
+                  <View style={styles.inputContainer}>
+                    <FontAwesome5 name="id-card" size={20} color={COLORS.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="TC Kimlik No"
+                      placeholderTextColor="#666"
+                      value={values.tcNo}
+                      onChangeText={handleChange("tcNo")}
+                      onBlur={handleBlur("tcNo")}
+                      keyboardType="numeric"
+                      maxLength={11}
+                    />
+                  </View>
+                  {touched.tcNo && errors.tcNo && (
+                    <Text style={styles.errorText}>{errors.tcNo}</Text>
+                  )}
 
-              {/* First Name Input */}
-              <TextInput
-                style={styles.input}
-                placeholder="İsim"
-                value={values.firstName}
-                onChangeText={handleChange("firstName")}
-                onBlur={handleBlur("firstName")}
-              />
-              {touched.firstName && errors.firstName && (
-                <Text style={styles.errorText}>{errors.firstName}</Text>
-              )}
+                  <View style={styles.inputContainer}>
+                    <FontAwesome5 name="user" size={20} color={COLORS.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="İsim"
+                      placeholderTextColor="#666"
+                      value={values.firstName}
+                      onChangeText={handleChange("firstName")}
+                      onBlur={handleBlur("firstName")}
+                    />
+                  </View>
+                  {touched.firstName && errors.firstName && (
+                    <Text style={styles.errorText}>{errors.firstName}</Text>
+                  )}
 
-              {/* Last Name Input */}
-              <TextInput
-                style={styles.input}
-                placeholder="Soyisim"
-                value={values.lastName}
-                onChangeText={handleChange("lastName")}
-                onBlur={handleBlur("lastName")}
-              />
-              {touched.lastName && errors.lastName && (
-                <Text style={styles.errorText}>{errors.lastName}</Text>
-              )}
+                  <View style={styles.inputContainer}>
+                    <FontAwesome5 name="user" size={20} color={COLORS.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Soyisim"
+                      placeholderTextColor="#666"
+                      value={values.lastName}
+                      onChangeText={handleChange("lastName")}
+                      onBlur={handleBlur("lastName")}
+                    />
+                  </View>
+                  {touched.lastName && errors.lastName && (
+                    <Text style={styles.errorText}>{errors.lastName}</Text>
+                  )}
 
-              {/* Password Input */}
-              <TextInput
-                style={styles.input}
-                placeholder="Şifre"
-                value={values.password}
-                onChangeText={handleChange("password")}
-                onBlur={handleBlur("password")}
-                secureTextEntry
-              />
-              {touched.password && errors.password && (
-                <Text style={styles.errorText}>{errors.password}</Text>
-              )}
+                  <View style={styles.inputContainer}>
+                    <FontAwesome5 name="lock" size={20} color={COLORS.primary} style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Şifre"
+                      placeholderTextColor="#666"
+                      value={values.password}
+                      onChangeText={handleChange("password")}
+                      onBlur={handleBlur("password")}
+                      secureTextEntry
+                    />
+                  </View>
+                  {touched.password && errors.password && (
+                    <Text style={styles.errorText}>{errors.password}</Text>
+                  )}
 
-              {/* Submit Button */}
-              <TouchableOpacity style={styles.button} onPress={handleSubmit}>
-                <Text style={styles.buttonText}>Kayıt Ol</Text>
+                  <TouchableOpacity style={styles.registerButton} onPress={handleSubmit}>
+                    <Text style={styles.registerButtonText}>Kayıt Ol</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </Formik>
+
+            <View style={styles.loginContainer}>
+              <Text style={styles.loginText}>Zaten hesabınız var mı?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate("Login")}>
+                <Text style={styles.loginLink}>Giriş Yap</Text>
               </TouchableOpacity>
             </View>
-          )}
-        </Formik>
-
-        {/* Navigate to Login Screen */}
-        <View
-          style={{
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            paddingTop: SPACING * 3,
-          }}
-        >
-          <TouchableOpacity
-            onPress={() => {
-              navigation.navigate("Login");
-            }}
-          >
-            <Text
-              style={{
-                color: COLORS.primary,
-                fontSize: SPACING * 1.5,
-                fontWeight: "600",
-              }}
-            >
-              Hesabınız Var Mı ?
-            </Text>
-            <Text
-              style={{
-                left: 8,
-                color: COLORS.primary,
-                fontSize: SPACING * 1.5,
-                fontWeight: "600",
-                top: 5,
-              }}
-            >
-              Haydi Giriş Yap
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+          </KeyboardAvoidingView>
+        </LinearGradient>
+      </View>
     </TouchableWithoutFeedback>
   );
 };
 
 const styles = StyleSheet.create({
-  input: {
+  container: {
+    flex: 1,
+  },
+  gradient: {
+    flex: 1,
+    width: width,
+    height: height,
+  },
+  formContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: "bold",
+    color: '#fff',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 30,
+    textAlign: "center",
+  },
+  form: {
+    width: "100%",
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     width: "100%",
     height: 50,
-    borderWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
     borderRadius: 25,
-    paddingHorizontal: SPACING,
-    marginBottom: SPACING * 1.5,
+    marginBottom: 8,
+    paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  inputIcon: {
+    marginRight: 10,
+  },
+  input: {
+    flex: 1,
+    height: "100%",
+    fontSize: 16,
     color: COLORS.dark,
   },
   errorText: {
-    color: "red",
+    color: '#FFB6C1',
     fontSize: 12,
-    marginBottom: SPACING * 1.5,
+    marginBottom: 8,
+    marginLeft: 15,
   },
-  button: {
-    backgroundColor: "#2196F3",
-    width: "90%",
+  registerButton: {
+    width: "100%",
     height: 50,
+    backgroundColor: '#fff',
+    borderRadius: 25,
     justifyContent: "center",
     alignItems: "center",
-    borderRadius: 25,
+    marginTop: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
-  buttonText: {
-    color: "white",
-    fontSize: SPACING * 2,
+  registerButtonText: {
+    color: COLORS.primary,
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  loginContainer: {
+    flexDirection: "row",
+    marginTop: 20,
+    alignItems: "center",
+  },
+  loginText: {
+    fontSize: 16,
+    color: '#fff',
+    marginRight: 5,
+  },
+  loginLink: {
+    fontSize: 16,
+    color: '#fff',
     fontWeight: "bold",
   },
 });

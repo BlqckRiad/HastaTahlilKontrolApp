@@ -1,45 +1,54 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   TextInput,
-  Button,
   Text,
   Alert,
   StyleSheet,
   TouchableWithoutFeedback,
+  TouchableOpacity,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
+import { LinearGradient } from 'expo-linear-gradient';
 import firebase from "../firebase/firebase";
 import "firebase/compat/database";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation } from "@react-navigation/native";
 import { Keyboard } from "react-native";
-import { useEffect } from "react";
+import { FontAwesome5 } from "@expo/vector-icons";
+import COLORS from "../config/COLORS";
+
+const { width, height } = Dimensions.get("window");
+
 const LoginScreen = () => {
   const [tcNo, setTcNo] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
 
   useEffect(() => {
-    // Sayfa açıldığında AsyncStorage'dan verileri alıp useState'lere atama
     const loadData = async () => {
       try {
-        // AsyncStorage'dan verileri alıyoruz
         const storedAd = await AsyncStorage.getItem("Ad");
-
-        // Ad değeri boş değilse Home ekranına yönlendirme
         if (storedAd !== null && storedAd !== "") {
-          console.log('Home Screen e gidiyoruz');
           navigation.navigate("Home");
         }
       } catch (error) {
         console.error("AsyncStorage okuma hatası:", error);
       }
     };
-
     loadData();
-  }, [navigation]); // navigation bağımlılığı ekleniyor
+  }, [navigation]);
 
   const handleLogin = async () => {
+    if (!tcNo || !password) {
+      Alert.alert("Uyarı", "Lütfen tüm alanları doldurun!");
+      return;
+    }
+
+    setIsLoading(true);
     try {
       const snapshot = await firebase.database().ref("Users").once("value");
 
@@ -48,32 +57,25 @@ const LoginScreen = () => {
         let foundUser = null;
         let userId = null;
 
-        // Veritabanındaki tüm kullanıcıları kontrol et
         Object.keys(users).forEach((key) => {
           const user = users[key];
-
-          // TcNo'nun string olarak karşılaştırılması
           if (user.TcNo.toString() === tcNo.toString()) {
             foundUser = user;
-            userId = key; // Kullanıcının User_ID'sini alıyoruz
+            userId = key;
           }
         });
-
+        
         if (foundUser) {
           if (foundUser.PassWord.toString() === password.toString()) {
-            // Kullanıcıyı AsyncStorage'a tek tek kaydediyoruz
-            await AsyncStorage.setItem("User_ID", userId); // User_ID'yi kaydediyoruz
-            await AsyncStorage.setItem("Ad", foundUser.Ad); // Ad'ı kaydediyoruz
-            await AsyncStorage.setItem("Soyad", foundUser.Soyad); // Soyad'ı kaydediyoruz
-            await AsyncStorage.setItem("TcNo", foundUser.TcNo.toString()); // TcNo'yu kaydediyoruz
-            await AsyncStorage.setItem("TelNo", foundUser.TelNo.toString()); // TelNo'yu kaydediyoruz
-            await AsyncStorage.setItem("Rol", foundUser.Rol); // Rol'ü kaydediyoruz
-            await AsyncStorage.setItem("Cinsiyet", foundUser.Cinsiyet); // Cinsiyet'i kaydediyoruz
-            await AsyncStorage.setItem("DogumTarihi", foundUser.DogumTarihi); // DogumTarihi'ni kaydediyoruz
-            await AsyncStorage.setItem(
-              "PassWord",
-              foundUser.PassWord.toString()
-            ); // PassWord'ü kaydediyoruz
+            await AsyncStorage.setItem("User_ID", userId);
+            await AsyncStorage.setItem("Ad", foundUser.Ad);
+            await AsyncStorage.setItem("Soyad", foundUser.Soyad);
+            await AsyncStorage.setItem("TcNo", foundUser.TcNo.toString());
+            await AsyncStorage.setItem("TelNo", foundUser.TelNo.toString());
+            await AsyncStorage.setItem("Rol", foundUser.Rol);
+            await AsyncStorage.setItem("Cinsiyet", foundUser.Cinsiyet);
+            await AsyncStorage.setItem("DogumTarihi", foundUser.DogumTarihi);
+            await AsyncStorage.setItem("PassWord", foundUser.PassWord.toString());
 
             navigation.navigate("Home");
           } else {
@@ -88,41 +90,74 @@ const LoginScreen = () => {
     } catch (error) {
       console.error(error);
       Alert.alert("Hata", "Giriş işlemi sırasında bir hata oluştu!");
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
-    <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <View style={styles.container}>
-        <Text style={styles.title}>Giriş Yap</Text>
-
-        <TextInput
-          style={styles.input}
-          placeholder="TC Kimlik No"
-          keyboardType="numeric"
-          value={tcNo}
-          onChangeText={setTcNo}
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Şifre"
-          secureTextEntry
-          value={password}
-          onChangeText={setPassword}
-        />
-
-        <Button title="Giriş Yap" onPress={handleLogin} />
-
-        <Text style={styles.registerText}>
-          Hesabınız yok mu?{" "}
-          <Text
-            style={styles.registerLink}
-            onPress={() => navigation.navigate("Register")}
+        <LinearGradient
+          colors={['#487DD2', '#2196F3', '#64B5F6']}
+          style={styles.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={styles.formContainer}
           >
-            Kayıt Olun
-          </Text>
-        </Text>
+            <View style={styles.iconContainer}>
+              <FontAwesome5 name="hand-holding-medical" size={50} color={COLORS.primary} />
+            </View>
+
+            <Text style={styles.title}>Hoş Geldiniz</Text>
+            <Text style={styles.subtitle}>Sağlık bilgilerinize erişmek için giriş yapın</Text>
+
+            <View style={styles.inputContainer}>
+              <FontAwesome5 name="id-card" size={20} color={COLORS.primary} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="TC Kimlik No"
+                placeholderTextColor="#666"
+                keyboardType="numeric"
+                value={tcNo}
+                onChangeText={setTcNo}
+                maxLength={11}
+              />
+            </View>
+
+            <View style={styles.inputContainer}>
+              <FontAwesome5 name="lock" size={20} color={COLORS.primary} style={styles.inputIcon} />
+              <TextInput
+                style={styles.input}
+                placeholder="Şifre"
+                placeholderTextColor="#666"
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+              />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+              onPress={handleLogin}
+              disabled={isLoading}
+            >
+              <Text style={styles.loginButtonText}>
+                {isLoading ? "Giriş Yapılıyor..." : "Giriş Yap"}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.registerContainer}>
+              <Text style={styles.registerText}>Hesabınız yok mu?</Text>
+              <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+                <Text style={styles.registerLink}>Kayıt Olun</Text>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        </LinearGradient>
       </View>
     </TouchableWithoutFeedback>
   );
@@ -131,32 +166,112 @@ const LoginScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  gradient: {
+    flex: 1,
+    width: width,
+    height: height,
+  },
+  formContainer: {
+    flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    backgroundColor: "#f8f8f8",
+  },
+  iconContainer: {
+    width: 100,
+    height: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
   },
   title: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: "bold",
-    marginBottom: 20,
+    color: '#fff',
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginBottom: 30,
+    textAlign: "center",
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: "100%",
+    height: 50,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: 25,
+    marginBottom: 15,
+    paddingHorizontal: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.22,
+    shadowRadius: 2.22,
+    elevation: 3,
+  },
+  inputIcon: {
+    marginRight: 10,
   },
   input: {
-    height: 40,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 4,
-    marginBottom: 16,
-    paddingHorizontal: 8,
+    flex: 1,
+    height: "100%",
+    fontSize: 16,
+    color: COLORS.dark,
+  },
+  loginButton: {
     width: "100%",
-    backgroundColor: "#fff",
+    height: 50,
+    backgroundColor: '#fff',
+    borderRadius: 25,
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 20,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  loginButtonDisabled: {
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  loginButtonText: {
+    color: COLORS.primary,
+    fontSize: 18,
+    fontWeight: "bold",
+  },
+  registerContainer: {
+    flexDirection: "row",
+    marginTop: 20,
+    alignItems: "center",
   },
   registerText: {
-    marginTop: 20,
     fontSize: 16,
+    color: '#fff',
+    marginRight: 5,
   },
   registerLink: {
-    color: "#007BFF",
+    fontSize: 16,
+    color: '#fff',
     fontWeight: "bold",
   },
 });

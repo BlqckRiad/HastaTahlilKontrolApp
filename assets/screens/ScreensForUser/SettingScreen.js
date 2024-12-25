@@ -1,19 +1,26 @@
-import React from "react";
-import { View, Text, TouchableOpacity, Image } from "react-native";
-import { createDrawerNavigator } from "@react-navigation/drawer";
-import { NavigationContainer } from "@react-navigation/native";
-import { MaterialIcons } from "@expo/vector-icons";
-
-import SPACING from "../../config/SPACING";
-import COLORS from "../../config/COLORS";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { TextInput } from "react-native-gesture-handler";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  Image, 
+  TextInput,
+  ScrollView,
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard
+} from "react-native";
+import { MaterialIcons, FontAwesome5 } from "@expo/vector-icons";
 import { Picker } from "@react-native-picker/picker";
+import { LinearGradient } from 'expo-linear-gradient';
+import { SafeAreaView } from "react-native-safe-area-context";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import firebase from "../../firebase/firebase";
 import "firebase/compat/database";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useEffect } from "react";
+import SPACING from "../../config/SPACING";
+import COLORS from "../../config/COLORS";
 
 const SettingScreen = ({ navigation }) => {
   const [ad, setAd] = useState("");
@@ -22,443 +29,331 @@ const SettingScreen = ({ navigation }) => {
   const [telNo, setTelNo] = useState("");
   const [sex, setSexs] = useState("");
   const [date, setDate] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Sayfa açıldığında AsyncStorage'dan verileri alıp useState'lere atama
-    const loadData = async () => {
-      try {
-        // AsyncStorage'dan verileri alıyoruz
-        const storedAd = await AsyncStorage.getItem("Ad");
-        const storedSoyad = await AsyncStorage.getItem("Soyad");
-        const storedTcNo = await AsyncStorage.getItem("TcNo");
-        const storedTelNo = await AsyncStorage.getItem("TelNo");
-        const storedSex = await AsyncStorage.getItem("Cinsiyet");
-        const storedDate = await AsyncStorage.getItem("DogumTarihi");
-        // Verileri useState'lere atıyoruz
-        if (storedAd) setAd(storedAd);
-        if (storedSoyad) setSoyad(storedSoyad);
-        if (storedTcNo) setTcNo(storedTcNo);
-        if (storedTelNo) setTelNo(storedTelNo);
-        if (storedSex) setSexs(storedSex);
-        if (storedDate) setDate(storedDate);
-      } catch (error) {
-        console.error("AsyncStorage okuma hatası:", error);
-      }
-    };
-
     loadData();
-  }, []); // Sadece component mount olduğunda çalışacak
+  }, []);
 
-  const updateUser = async () => {
+  const loadData = async () => {
     try {
-      // 1. Get User_ID to identify the user
-      const User_ID = await AsyncStorage.getItem("User_ID");
-      console.log("User_ID:", User_ID);
-  
-      if (!User_ID) {
-        console.error("User ID not found.");
-        return;
-      }
-  
-      // 2. Fetch all users from the database
-      const snapshot = await firebase.database().ref("Users").once("value");
-      const users = snapshot.val();
-  
-      // 3. Find the user with the matching User_ID
-      const selectedUser = Object.keys(users).find((key) => key === User_ID);
-      
-      if (!selectedUser) {
-        console.error("User not found in the database.");
-        return;
-      }
-  
-      // 4. Prepare updated user data
-      const updatedUserData = {
-        Ad : ad,
-        Soyad : soyad,
-        TcNo : tcNo,
-        TelNo : telNo,
-        Cinsiyet : sex,
-        DogumTarihi : date,
-      };
-  
-      // 5. Update the user data in Firebase
-      await firebase.database().ref(`Users/${User_ID}`).update(updatedUserData);
-  
-      console.log("User data updated successfully!");
-  
-      // Optionally, you can update AsyncStorage as well
-      await AsyncStorage.setItem("Ad", ad);
-      await AsyncStorage.setItem("Soyad", soyad);
-      await AsyncStorage.setItem("TcNo", tcNo);
-      await AsyncStorage.setItem("TelNo", telNo);
-      await AsyncStorage.setItem("Cinsiyet", sex);
-      await AsyncStorage.setItem("DogumTarihi", date);
-  
-      // Provide feedback to the user
-      alert("Profil Başarıyla Güncellendi!");
+      const storedAd = await AsyncStorage.getItem("Ad");
+      const storedSoyad = await AsyncStorage.getItem("Soyad");
+      const storedTcNo = await AsyncStorage.getItem("TcNo");
+      const storedTelNo = await AsyncStorage.getItem("TelNo");
+      const storedSex = await AsyncStorage.getItem("Cinsiyet");
+      const storedDate = await AsyncStorage.getItem("DogumTarihi");
+
+      if (storedAd) setAd(storedAd);
+      if (storedSoyad) setSoyad(storedSoyad);
+      if (storedTcNo) setTcNo(storedTcNo);
+      if (storedTelNo) setTelNo(storedTelNo);
+      if (storedSex) setSexs(storedSex);
+      if (storedDate) setDate(storedDate);
     } catch (error) {
-      console.error("Error updating user data:", error);
-      alert("An error occurred while updating your profile.");
+      console.error("AsyncStorage okuma hatası:", error);
     }
   };
-  
+
+  const updateUser = async () => {
+    setLoading(true);
+    try {
+      const userRef = firebase.database().ref("Users");
+      const snapshot = await userRef.once("value");
+      const users = snapshot.val();
+
+      let userId = null;
+      Object.keys(users).forEach((key) => {
+        if (users[key].TcNo === tcNo) {
+          userId = key;
+        }
+      });
+
+      if (userId) {
+        await userRef.child(userId).update({
+          Ad: ad,
+          Soyad: soyad,
+          TcNo: tcNo,
+          TelNo: telNo,
+          Cinsiyet: sex,
+          DogumTarihi: date,
+        });
+
+        await AsyncStorage.setItem("Ad", ad);
+        await AsyncStorage.setItem("Soyad", soyad);
+        await AsyncStorage.setItem("TcNo", tcNo);
+        await AsyncStorage.setItem("TelNo", telNo);
+        await AsyncStorage.setItem("Cinsiyet", sex);
+        await AsyncStorage.setItem("DogumTarihi", date);
+
+        alert("Profiliniz başarıyla güncellendi!");
+      }
+    } catch (error) {
+      console.error("Error updating user data:", error);
+      alert("Profil güncellenirken bir hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <SafeAreaView style={{ flex: 1, paddingTop: SPACING * 7 }}>
-      {/* Drawer'ı açan özel ikon */}
-      <TouchableOpacity
-        style={{ position: "absolute", top: SPACING * 5, left: SPACING * 2 }}
-        onPress={() => navigation.openDrawer()}
-      >
-        <MaterialIcons name="menu" size={32} color="black" />
-      </TouchableOpacity>
-      <View style={{}}>
-        <View
-          style={{
-            width: "100%",
-            height: 200,
-            justifyContent: "center",
-            alignItems: "center",
-          }}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+      <SafeAreaView style={styles.container}>
+        <LinearGradient
+          colors={['#487DD2', '#2196F3']}
+          style={styles.header}
         >
-          <Image
-            style={{
-              width: 200,
-              height: 200,
-              borderRadius: 100,
-              borderColor: COLORS.primary,
-              borderWidth: 2,
-            }}
-            source={require("../../image/avatar.png")}
-          />
-          <View>
-            <Text
-              style={{
-                color: COLORS.dark,
-                fontSize: SPACING * 2.5,
-                fontWeight: "700",
-              }}
-            >
-              Merhaba, {ad} {soyad}
-            </Text>
-          </View>
-        </View>
+          <TouchableOpacity
+            style={styles.menuButton}
+            onPress={() => navigation.openDrawer()}
+          >
+            <FontAwesome5 name="bars" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Profil Ayarları</Text>
+        </LinearGradient>
 
-        <View
-          style={{
-            marginTop: SPACING * 5,
-          }}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.content}
         >
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View
-              style={{
-                marginLeft: SPACING * 2,
-                justifyContent: "center",
-                alignItems: "center",
-                flex: 1,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: SPACING * 2,
-                  fontWeight: "700",
-                  color: COLORS.dark,
-                }}
-              >
-                Adınız
+          <ScrollView showsVerticalScrollIndicator={false}>
+            <View style={styles.profileSection}>
+              <View style={styles.avatarContainer}>
+                <Image
+                  style={styles.avatar}
+                  source={require("../../image/avatar.png")}
+                />
+              </View>
+              <Text style={styles.welcomeText}>
+                Merhaba, {ad} {soyad}
               </Text>
-              <TextInput
-                placeholder="Adınız"
-                style={{
-                  width: "80%",
-                  height: SPACING * 4,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: COLORS.dark,
-                  marginTop: SPACING,
-                  textAlign: "center",
-                  fontSize: SPACING * 1.5,
-                  fontWeight: "bold",
-                }}
-                value={ad}
-                onChangeText={(item) => setAd(item)}
-              />
             </View>
-            <View
-              style={{
-                marginRight: SPACING * 2,
-                justifyContent: "center",
-                alignItems: "center",
-                flex: 1,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: SPACING * 2,
-                  fontWeight: "700",
-                  color: COLORS.dark,
-                }}
-              >
-                Soyadınız
-              </Text>
-              <TextInput
-                placeholder="Soy Adınız"
-                style={{
-                  width: "80%",
-                  height: SPACING * 4,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: COLORS.dark,
-                  marginTop: SPACING,
-                  textAlign: "center",
-                  fontSize: SPACING * 1.5,
-                  fontWeight: "bold",
-                }}
-                value={soyad}
-                onChangeText={(item) => setSoyad(item)}
-              />
-            </View>
-          </View>
 
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View
-              style={{
-                justifyContent: "center",
-                alignItems: "center",
-                flex: 1,
-                marginTop: SPACING * 2,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: SPACING * 2,
-                  fontWeight: "700",
-                  color: COLORS.dark,
-                }}
-              >
-                Tc Kimlik Numaranız
-              </Text>
-              <TextInput
-                placeholder="Tc Kimlik Numaranız"
-                style={{
-                  width: "80%",
-                  height: SPACING * 4,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: COLORS.dark,
-                  marginTop: SPACING,
-                  textAlign: "center",
-                  fontSize: SPACING * 1.5,
-                  fontWeight: "bold",
-                }}
-                keyboardType="numeric"
-                value={tcNo}
-                onChangeText={(item) => setTcNo(item)}
-              />
-            </View>
-          </View>
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View
-              style={{
-                justifyContent: "center",
-                alignItems: "center",
-                flex: 1,
-                marginTop: SPACING * 2,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: SPACING * 2,
-                  fontWeight: "700",
-                  color: COLORS.dark,
-                }}
-              >
-                Telefon Numaranız
-              </Text>
-              <TextInput
-                placeholder="Telefon Numaranız"
-                style={{
-                  width: "80%",
-                  height: SPACING * 4,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: COLORS.dark,
-                  marginTop: SPACING,
-                  textAlign: "center",
-                  fontSize: SPACING * 1.5,
-                  fontWeight: "bold",
-                }}
-                keyboardType="numeric"
-                value={telNo}
-                onChangeText={(item) => settelNo(item)}
-              />
-            </View>
-          </View>
+            <View style={styles.formSection}>
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Ad</Text>
+                  <TextInput
+                    placeholder="Adınız"
+                    style={styles.input}
+                    value={ad}
+                    onChangeText={setAd}
+                  />
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Soyad</Text>
+                  <TextInput
+                    placeholder="Soyadınız"
+                    style={styles.input}
+                    value={soyad}
+                    onChangeText={setSoyad}
+                  />
+                </View>
+              </View>
 
-          <View
-            style={{
-              marginTop: SPACING * 1,
-              flexDirection: "row",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <View
-              style={{
-                marginLeft: SPACING * 2,
-                justifyContent: "center",
-                alignItems: "center",
-                flex: 1,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: SPACING * 2,
-                  fontWeight: "700",
-                  color: COLORS.dark,
-                }}
-              >
-                Cinsiyetiniz
-              </Text>
-              {/* Picker component for gender selection */}
-              <Picker
-                selectedValue={sex}
-                onValueChange={(itemValue) => setSexs(itemValue)} // Correctly update the gender selection
-                style={{
-                  width: "80%",
-                  height: SPACING * 5,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: COLORS.dark,
-                  marginTop: SPACING,
-                  textAlign: "center",
-                  fontSize: SPACING * 1.5,
-                  fontWeight: "bold",
-                }}
-              >
-                <Picker.Item label="Erkek" value="Erkek" />
-                <Picker.Item label="Kadın" value="Kadın" />
-                <Picker.Item label="Diğer" value="Diğer" />
-              </Picker>
-            </View>
-            <View
-              style={{
-                marginRight: SPACING * 2,
-                justifyContent: "center",
-                alignItems: "center",
-                flex: 1,
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: SPACING * 2,
-                  fontWeight: "700",
-                  color: COLORS.dark,
-                }}
-              >
-                Doğum Tarihiniz
-              </Text>
-              <TextInput
-                placeholder="Doğum Tarihiniz"
-                style={{
-                  width: "80%",
-                  height: SPACING * 4,
-                  borderRadius: 10,
-                  borderWidth: 1,
-                  borderColor: COLORS.dark,
-                  marginTop: SPACING,
-                  textAlign: "center",
-                  fontSize: SPACING * 1.5,
-                  fontWeight: "bold",
-                }}
-                value={date}
-                onChangeText={(item) => setDate(item)}
-              />
-            </View>
-          </View>
-          <View
-            style={{
-              justifyContent: "center",
-              alignItems: "center",
-              marginTop: SPACING * 4,
-            }}
-          >
-            <TouchableOpacity
-              style={{
-                width: SPACING * 18,
-                height: SPACING * 4,
-                backgroundColor: "#00a500",
-                justifyContent: "center",
-                alignItems: "center",
-                borderRadius: SPACING * 2,
-                borderWidth: 2,
-                borderColor: COLORS.primary,
-              }}
-              onPress={() => updateUser()}
-            >
-              <Text
-                style={{
-                  fontSize: SPACING * 2,
-                  fontWeight: "bold",
-                  color: COLORS.white,
-                }}
-              >
-                {" "}
-                KAYDET{" "}
-              </Text>
-            </TouchableOpacity>
+              <View style={styles.fullWidthInput}>
+                <Text style={styles.inputLabel}>TC Kimlik No</Text>
+                <TextInput
+                  placeholder="TC Kimlik Numaranız"
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={tcNo}
+                  onChangeText={setTcNo}
+                  maxLength={11}
+                />
+              </View>
 
-            <TouchableOpacity
-              style={{
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-              onPress={() => navigation.navigate("ChangePassword")}
-            >
-              <Text
-                style={{
-                  marginTop: SPACING * 3,
-                  color: COLORS.dark,
-                  fontSize: SPACING * 2,
-                  fontWeight: "600,",
-                }}
+              <View style={styles.fullWidthInput}>
+                <Text style={styles.inputLabel}>Telefon</Text>
+                <TextInput
+                  placeholder="Telefon Numaranız"
+                  style={styles.input}
+                  keyboardType="numeric"
+                  value={telNo}
+                  onChangeText={setTelNo}
+                  maxLength={11}
+                />
+              </View>
+
+              <View style={styles.inputRow}>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Cinsiyet</Text>
+                  <View style={styles.pickerContainer}>
+                    <Picker
+                      selectedValue={sex}
+                      onValueChange={setSexs}
+                      style={styles.picker}
+                    >
+                      <Picker.Item label="Erkek" value="Erkek" />
+                      <Picker.Item label="Kadın" value="Kadın" />
+                      <Picker.Item label="Diğer" value="Diğer" />
+                    </Picker>
+                  </View>
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Doğum Tarihi</Text>
+                  <TextInput
+                    placeholder="GG/AA/YYYY"
+                    style={styles.input}
+                    value={date}
+                    onChangeText={setDate}
+                  />
+                </View>
+              </View>
+            </View>
+
+            <View style={styles.actionSection}>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={updateUser}
+                disabled={loading}
               >
-                Şifreni mi Değiştirmeye Geldin ?
-              </Text>
-              <Text
-                style={{
-                  color: COLORS.primary,
-                  fontSize: SPACING * 2,
-                  fontWeight: "600,",
-                }}
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveButtonText}>KAYDET</Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.changePasswordButton}
+                onPress={() => navigation.navigate("ChangePassword")}
               >
-                Tıkla ve Değiştirelim :)
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </SafeAreaView>
+                <Text style={styles.changePasswordText}>
+                  Şifreni değiştirmek için tıkla
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
+};
+
+const styles = {
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: SPACING * 2,
+    paddingTop: SPACING * 4,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginLeft: SPACING * 2,
+  },
+  content: {
+    flex: 1,
+  },
+  profileSection: {
+    alignItems: 'center',
+    padding: SPACING * 2,
+  },
+  avatarContainer: {
+    marginBottom: SPACING,
+  },
+  avatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 3,
+    borderColor: COLORS.primary,
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: COLORS.dark,
+    marginTop: SPACING,
+  },
+  formSection: {
+    padding: SPACING * 2,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: SPACING * 2,
+  },
+  inputContainer: {
+    flex: 1,
+    marginHorizontal: SPACING,
+  },
+  fullWidthInput: {
+    marginHorizontal: SPACING,
+    marginBottom: SPACING * 2,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.dark,
+    marginBottom: SPACING / 2,
+  },
+  input: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: SPACING,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    color: COLORS.dark,
+  },
+  pickerContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    overflow: 'hidden',
+  },
+  picker: {
+    height: 50,
+  },
+  actionSection: {
+    padding: SPACING * 2,
+    alignItems: 'center',
+  },
+  saveButton: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingVertical: SPACING,
+    paddingHorizontal: SPACING * 4,
+    marginBottom: SPACING * 2,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  changePasswordButton: {
+    padding: SPACING,
+  },
+  changePasswordText: {
+    color: COLORS.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
 };
 
 export default SettingScreen;

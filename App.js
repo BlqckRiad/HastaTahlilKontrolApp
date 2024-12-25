@@ -1,6 +1,8 @@
 import React from "react";
 import LoginScreen from "./assets/screens/LoginScreen";
 import RegisterScreen from "./assets/screens/RegisterScreen";
+import { StatusBar } from "react-native";
+import { StyleSheet } from "react-native";
 
 import HomeScreen from "./assets/screens/ScreensForUser/HomeScreen";
 
@@ -21,8 +23,6 @@ import TahlilScreen from "./assets/screens/ScreensForAdmin/TahlilScreen";
 import TahlilDetailScreen from "./assets/screens/ScreensForAdmin/TahlilDetailScreen";
 import TahlilDetailTwoScreen from "./assets/screens/ScreensForAdmin/TahlilDetailTwoScreen";
 import TahlilUserScreen from "./assets/screens/ScreensForUser/TahlilUserScreen";
-
-
 
 const Drawer = createDrawerNavigator();
 const App = () => {
