@@ -1,204 +1,238 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  StyleSheet,
-  Text,
   View,
+  Text,
   TouchableOpacity,
-  Modal,
   FlatList,
-  Pressable,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import SPACING from '../../config/SPACING';
-import COLORS from '../../config/COLORS';
-import Entypo from '@expo/vector-icons/Entypo';
-import firebase from '../../firebase/firebase';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+  ActivityIndicator,
+  StyleSheet,
+  Dimensions,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from 'expo-linear-gradient';
+import { FontAwesome5 } from "@expo/vector-icons";
+import firebase from "../../firebase/firebase";
+import "firebase/compat/database";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import SPACING from "../../config/SPACING";
+import COLORS from "../../config/COLORS";
+
+const { width } = Dimensions.get("window");
 
 const TahlilUserScreen = ({ navigation }) => {
-  const [tcNo, setTcNo] = useState();
-  const [tahlilData, setTahlilData] = useState([]);
-  const [filteredTahlils, setFilteredTahlils] = useState([]);
-  const [selectedTahlil, setSelectedTahlil] = useState(null);
-  const [modalVisible, setModalVisible] = useState(false);
+  const [tahlilSonuc, setTahlilSonuc] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tcNo, setTcNo] = useState("");
+
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const loadData = async () => {
     try {
-      const snapshot = await firebase.database().ref('TahlilSonuc').once('value');
-      const tahlils = snapshot.val();
-      const storedTcNo = await AsyncStorage.getItem('TcNo');
-      setTcNo(storedTcNo);
+      const storedTcNo = await AsyncStorage.getItem("TcNo");
+      if (storedTcNo) {
+        setTcNo(storedTcNo);
+        const snapshot = await firebase.database().ref("TahlilSonuc").once("value");
+        const tahlilData = snapshot.val();
 
-      const filtered = Object.values(tahlils || {}).filter(
-        (item) => item.TcNo === storedTcNo
-      );
-      setFilteredTahlils(filtered);
-      setTahlilData(filtered);
+        if (tahlilData) {
+          const filteredTahlils = Object.values(tahlilData).filter(
+            (tahlil) => tahlil.TcNo === storedTcNo
+          );
+          setTahlilSonuc(filteredTahlils);
+        }
+      }
     } catch (error) {
-      console.error('Tahlil Sonuçları Gelmiyor:', error);
+      console.error("Veri yükleme hatası:", error);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  const renderTahlilItem = ({ item }) => (
-    <View style={styles.tahlilItem}>
+
+  const renderTahlilItem = ({ item }) => {
+    const hasIgValues = Object.keys(item).some(key => 
+      key.startsWith("Ig") && item[key] !== 0 && item[key] !== "0"
+    );
+
+    if (!hasIgValues) return null;
+
+    return (
       <TouchableOpacity
-        style={styles.tahlilHeader}
-        onPress={() => {
-          setSelectedTahlil(selectedTahlil === item ? null : item);
-        }}
+        style={styles.tahlilCard}
+        onPress={() => navigation.navigate("TahlilDetail", { item })}
       >
-        <Text style={styles.tahlilDate}>{item.Tarih}</Text>
-        <Entypo
-          name={selectedTahlil === item ? 'chevron-up' : 'chevron-down'}
-          size={20}
-          color="black"
-        />
+        <View style={styles.cardHeader}>
+          <FontAwesome5 name="file-medical-alt" size={24} color={COLORS.primary} />
+          <Text style={styles.dateText}>{item.Tarih || "Tarih Belirtilmemiş"}</Text>
+        </View>
+        
+        <View style={styles.igValuesContainer}>
+          {Object.entries(item).map(([key, value]) => {
+            if (key.startsWith("Ig") && value !== 0 && value !== "0") {
+              return (
+                <View key={key} style={styles.igValueItem}>
+                  <Text style={styles.igValueTitle}>{key}</Text>
+                  <Text style={styles.igValue}>{value}</Text>
+                </View>
+              );
+            }
+            return null;
+          })}
+        </View>
+
+        <View style={styles.cardFooter}>
+          <Text style={styles.viewDetailsText}>Detayları Görüntüle</Text>
+          <FontAwesome5 name="chevron-right" size={16} color={COLORS.primary} />
+        </View>
       </TouchableOpacity>
-      {selectedTahlil === item && (
-        <View style={styles.tahlilDetails}>
-          {Object.entries(item).map(([key, value]) => (
-            key !== 'TcNo' && key !== 'Tarih' && (
-              <Text key={key} style={styles.tahlilDetailText}>
-                {key}: {value}
-              </Text>
-            )
-          ))}
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+      </View>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <LinearGradient
+        colors={['#487DD2', '#2196F3']}
+        style={styles.header}
+      >
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => navigation.openDrawer()}
+        >
+          <FontAwesome5 name="bars" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Tahlillerim</Text>
+      </LinearGradient>
+
+      {tahlilSonuc.length > 0 ? (
+        <FlatList
+          data={tahlilSonuc}
+          renderItem={renderTahlilItem}
+          keyExtractor={(item, index) => index.toString()}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <FontAwesome5 name="file-medical" size={50} color={COLORS.primary} />
+          <Text style={styles.emptyText}>Henüz tahlil sonucunuz bulunmamaktadır</Text>
         </View>
       )}
-    </View>
-  );
-  loadData();
-  return (
-    <SafeAreaView
-      style={{
-        marginHorizontal: SPACING * 2,
-        marginVertical: SPACING * 5,
-      }}
-    >
-      <View
-        style={{
-          flexDirection: 'row',
-          justifyContent: 'space-between',
-          width: '100%',
-        }}
-      >
-        <View
-          style={{
-            width: 40,
-            height: 40,
-            backgroundColor: COLORS.light,
-            justifyContent: 'center',
-            alignItems: 'center',
-            borderRadius: SPACING,
-          }}
-        >
-          <TouchableOpacity onPress={() => navigation.openDrawer()}>
-            <Entypo name="menu" size={30} color="black" />
-          </TouchableOpacity>
-        </View>
-      </View>
-      <View
-        style={{
-          justifyContent: 'center',
-          alignItems: 'center',
-          width: '100%',
-        }}
-      >
-        <Text
-          style={{
-            fontSize: SPACING * 1.8,
-            fontWeight: 'bold',
-          }}
-        >
-          TAHLİL SONUÇLARINIZ
-        </Text>
-        <View style={styles.divider} />
-      </View>
-      <FlatList
-        data={filteredTahlils}
-        keyExtractor={(item, index) => index.toString()}
-        renderItem={renderTahlilItem}
-        contentContainerStyle={styles.listContainer}
-      />
-      <Modal
-        visible={modalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalView}>
-          <Text style={styles.modalText}>Detaylar için bir tarih seçiniz!</Text>
-          <Pressable
-            style={[styles.button, styles.buttonClose]}
-            onPress={() => setModalVisible(false)}
-          >
-            <Text style={styles.textStyle}>Kapat</Text>
-          </Pressable>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.lightGray,
-    width: '100%',
-    marginVertical: SPACING,
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
   },
-  tahlilItem: {
-    backgroundColor: COLORS.light,
-    padding: SPACING,
-    marginBottom: SPACING,
-    borderRadius: SPACING / 2,
-  },
-  tahlilHeader: {
+  header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    padding: SPACING * 2,
+    paddingTop: SPACING * 4,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
   },
-  tahlilDate: {
-    fontSize: SPACING * 1.6,
-    fontWeight: 'bold',
-  },
-  tahlilDetails: {
-    marginTop: SPACING,
-  },
-  tahlilDetailText: {
-    fontSize: SPACING * 1.4,
-    color: COLORS.darkGray,
-  },
-  modalView: {
-    margin: 20,
-    backgroundColor: 'white',
+  menuButton: {
+    width: 40,
+    height: 40,
     borderRadius: 20,
-    padding: 35,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginLeft: SPACING * 2,
+  },
+  listContainer: {
+    padding: SPACING * 2,
+  },
+  tahlilCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: SPACING * 2,
+    marginBottom: SPACING * 2,
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
     },
     shadowOpacity: 0.25,
-    shadowRadius: 4,
+    shadowRadius: 3.84,
     elevation: 5,
   },
-  button: {
-    borderRadius: 20,
-    padding: 10,
-    elevation: 2,
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING,
   },
-  buttonClose: {
-    backgroundColor: COLORS.primary,
+  dateText: {
+    marginLeft: SPACING,
+    fontSize: 16,
+    fontWeight: '600',
+    color: COLORS.dark,
   },
-  textStyle: {
-    color: 'white',
+  igValuesContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginVertical: SPACING,
+  },
+  igValueItem: {
+    width: '50%',
+    paddingVertical: SPACING / 2,
+  },
+  igValueTitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  igValue: {
+    fontSize: 16,
     fontWeight: 'bold',
-    textAlign: 'center',
+    color: COLORS.primary,
   },
-  modalText: {
-    marginBottom: 15,
+  cardFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: SPACING,
+    paddingTop: SPACING,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  viewDetailsText: {
+    color: COLORS.primary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SPACING * 2,
+  },
+  emptyText: {
+    marginTop: SPACING,
+    fontSize: 16,
+    color: '#666',
     textAlign: 'center',
   },
 });

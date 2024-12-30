@@ -43,31 +43,36 @@ const validationSchema = Yup.object().shape({
 const RegisterScreen = ({ navigation }) => {
   const addUserToDatabase = async (userData) => {
     try {
-      // TC No kontrolü
-      const snapshot = await firebase.database().ref("Users").once("value");
-      const users = snapshot.val();
-      
-      if (users) {
-        const userExists = Object.values(users).some(
-          (user) => user.TcNo.toString() === userData.TcNo.toString()
-        );
-        
-        if (userExists) {
-          Alert.alert("Hata", "Bu TC Kimlik numarası ile kayıtlı bir kullanıcı zaten var!");
-          return;
-        }
+      // Validate required fields
+      if (!userData.TcNo || !userData.firstName || !userData.lastName || !userData.password) {
+        Alert.alert("Hata", "Lütfen tüm alanları doldurun!");
+        return;
       }
-
-      // Yeni kullanıcı oluştur
+  
+      const snapshot = await firebase.database().ref("Users").once("value");
+      const users = snapshot.val() || {};
+  
+      console.log("Fetched users from database:", users);
+  
+      const userTcNoString = userData.TcNo ? userData.TcNo.toString() : "";
+      const userExists = Object.values(users).some(
+        (user) => user?.TcNo?.toString() === userTcNoString
+      );
+  
+      if (userExists) {
+        Alert.alert("Hata", "Bu TC Kimlik numarası ile kayıtlı bir kullanıcı zaten var!");
+        return;
+      }
+  
       const newUserRef = firebase.database().ref("Users").push();
       await newUserRef.set({
-        TcNo: userData.TcNo,
+        TcNo: userData.TcNo.toString(), // Ensure TcNo is a string
         Ad: userData.firstName,
         Soyad: userData.lastName,
         PassWord: userData.password,
         Rol: "User",
       });
-
+  
       Alert.alert(
         "Başarılı",
         "Kayıt işlemi başarıyla tamamlandı!",
@@ -83,6 +88,8 @@ const RegisterScreen = ({ navigation }) => {
       Alert.alert("Hata", "Kayıt işlemi sırasında bir hata oluştu!");
     }
   };
+  
+  
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>

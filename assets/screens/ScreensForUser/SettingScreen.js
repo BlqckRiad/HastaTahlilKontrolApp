@@ -31,9 +31,7 @@ const SettingScreen = ({ navigation }) => {
   const [date, setDate] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+
 
   const loadData = async () => {
     try {
@@ -95,7 +93,7 @@ const SettingScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
-
+  loadData();
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <SafeAreaView style={styles.container}>

@@ -109,13 +109,7 @@ const HomeScreen = ({ navigation }) => {
                 <Text style={styles.actionButtonText}>Tahlillerim</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity 
-                style={styles.actionButton}
-                onPress={() => navigation.navigate("Settings")}
-              >
-                <FontAwesome5 name="user-cog" size={24} color={COLORS.primary} />
-                <Text style={styles.actionButtonText}>Profil</Text>
-              </TouchableOpacity>
+          
 
               {userRole === "Admin" && (
                 <TouchableOpacity 
